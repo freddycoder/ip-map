@@ -13,7 +13,9 @@
   <div id="formulaire">
     <h3>Entrer les adresses ip</h3>
     <textarea id="ip_addresses"></textarea>
-    <button onclick="showIpsLocation()">Show ips locations</button>
+    <button onclick="initMap()">Show ips locations</button>
+    <p id="ip_count">0 adresse ip</p>
+    <p id="ip_found">0 ip trouvé</p>
   </div>
   <div id="map"></div>
 
@@ -24,57 +26,70 @@
         '</div>' +
         '<h1 id="firstHeading" class="firstHeading">' + evenement.titre + '</h1>' +
         '<div id="bodyContent">' +
-        '<p><b>' + evenement.titre + '</b>' + evenement.description + '</p>' +
-        '<p><a href="' + evenement.lien + '">Article complet</a></p>' +
+        '<p>' + evenement.description + '</p>' +
+        '<p><a href="' + evenement.lien + '">' + evenement.lien + '</a></p>' +
         '</div>' +
         '</div>';
     }
 
-    const tableauIps = [];
-
-    var initMap = function () {
+    var initMap = async function () {
       const map = new google.maps.Map(document.getElementById("map"), {
         zoom: 4,
         center: { lat: 46.060853, lng: -70.952507 },
       });
 
-      const events = tableauIps;
+      const events = await showIpsLocation();
       const pins = [];
 
       for (var i = 0; i < events.length; i++) {
         const pin = {};
+        
         pin.infowindow = new google.maps.InfoWindow({ content: getHtmlCard(events[i]) });
+        
         pin.marker = new google.maps.Marker({
           position: events[i].location,
           map,
           title: events[i].titre
         });
+
         pin.marker.addListener("click", () => {
           pin.infowindow.open(map, pin.marker);
+
+
         });
 
         pins.push(pin);
       }
+
+      const pElem = document.getElementById("ip_found");
+      pElem.innerText = pins.length + " ip trouvé";
     }
 
-    var showIpsLocation = function () {
-      var lines = document.getElementById("ip_addresses").value.split('\n');
+    var showIpsLocation = async function () {
+      const tableauIps = [];
+      
+      const lines = document.getElementById("ip_addresses").value.split('\n');
 
-      console.log(lines);
+      const pElem = document.getElementById("ip_count");
+      pElem.innerText = lines.length + " adresse ip";
 
+      const fetchs = [];
       for (var i = 0; i < lines.length; i++) {
-        console.log("fetch " + "http://ip-api.com/json/" + lines[i]);
-        fetch("http://ip-api.com/json/" + lines[i])
+        fetchs.push(fetch("http://ip-api.com/json/" + lines[i])
           .then(data => data.json())
           .then(j => tableauIps.push({
             location: { lat: j.lat, lng: j.lon },
             titre: j.query,
-            description: JSON.stringify(j, null, 1),
+            description: JSON.stringify(j, null, "    "),
             lien: "http://ip-api.com/json/" + j.query
-          }));
+          })));
       }
 
-      initMap();
+      for (var i = 0; i < fetchs.length; i++) {
+        await fetchs[i];
+      }
+
+      return tableauIps;
     }
   </script>
 
