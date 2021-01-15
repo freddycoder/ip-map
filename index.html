@@ -2,6 +2,8 @@
 <html>
 
 <head>
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+  <meta content="utf-8" http-equiv="encoding">
   <title>Carte des ips</title>
   <link rel="stylesheet" type="text/css" href="./style.css" />
   <script
@@ -17,29 +19,42 @@
     <p id="ip_count">0 adresse ip</p>
     <p id="ip_found">0 ip trouvé</p>
   </div>
+
   <div id="map"></div>
 
+  <div id="query">
+
+  </div>
+
   <script>
-    var getHtmlCard = function (evenement) {
+    var getHtmlCard = function (ipInfo) {
       return '<div id="content">' +
-        '<div id="siteNotice">' +
-        '</div>' +
-        '<h1 id="firstHeading" class="firstHeading">' + evenement.titre + '</h1>' +
-        '<div id="bodyContent">' +
-        '<p>' + evenement.description + '</p>' +
-        '<p><a href="' + evenement.lien + '">' + evenement.lien + '</a></p>' +
-        '</div>' +
-        '</div>';
+              '<div id="siteNotice">' +
+                '</div>' +
+                  '<h1 id="firstHeading" class="firstHeading">' + ipInfo.org + '</h1>' +
+                  '<p><a href="' + ipInfo.lien + '">' + ipInfo.lien + '</a></p>' +
+                  '<div id="bodyContent">' +
+                    '<p>Isp <b>' + ipInfo.isp + '</b></p>' +
+                    '<p>As <b>' + ipInfo.as + '</b></p>' +
+                    '<p>Country ' + ipInfo.country + '</p>' +
+                    '<p>Region ' + ipInfo.regionName + '</p>' +
+                    '<p>City ' + ipInfo.city + '</p>' +
+                    '<p>Zip ' + ipInfo.zip + '</p>' +
+                    '<p>Timezone ' + ipInfo.timezone + '</p>' +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+             '</div>';
     }
 
     var initMap = async function () {
-      const map = new google.maps.Map(document.getElementById("map"), {
-        zoom: 4,
-        center: { lat: 46.060853, lng: -70.952507 },
-      });
-
       const events = await showIpsLocation();
       const pins = [];
+
+      const map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 4,
+        center: events[0].location,
+      });
 
       for (var i = 0; i < events.length; i++) {
         const pin = {};
@@ -54,8 +69,6 @@
 
         pin.marker.addListener("click", () => {
           pin.infowindow.open(map, pin.marker);
-
-
         });
 
         pins.push(pin);
@@ -80,8 +93,16 @@
           .then(j => tableauIps.push({
             location: { lat: j.lat, lng: j.lon },
             titre: j.query,
-            description: JSON.stringify(j, null, "    "),
-            lien: "http://ip-api.com/json/" + j.query
+            description: JSON.stringify(j, null,  ' '),
+            lien: "http://ip-api.com/json/" + j.query,
+            country: j.country,
+            city: j.city,
+            regionName: j.regionName,
+            zip: j.zip,
+            timezone: j.timezone,
+            isp: j.isp,
+            org: j.org,
+            as: j.as
           })));
       }
 
