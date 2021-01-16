@@ -18,13 +18,16 @@
     <button onclick="initMap()">Show ips locations</button>
     <p id="ip_count">0 adresse ip</p>
     <p id="ip_found">0 ip trouvé</p>
+
+    <hr />
+
+    <h3>Analyser des logs</h3>
+    <textarea id="logs_text"></textarea>
+    <button onclick="analyseLogs()">Analyse logs</button>
+
   </div>
 
   <div id="map"></div>
-
-  <div id="query">
-
-  </div>
 
   <script>
     var getHtmlCard = function (ipInfo) {
@@ -36,12 +39,13 @@
                   '<div id="bodyContent">' +
                     '<p>Isp <b>' + ipInfo.isp + '</b></br>' +
                     'As <b>' + ipInfo.as + '</b></br>' +
-                    'Country ' + ipInfo.country + '</br>' +
-                    'Region ' + ipInfo.regionName + '</br>' +
                     'City ' + ipInfo.city + '</br>' +
+                    'Region ' + ipInfo.regionName + '</br>' +
+                    'Country ' + ipInfo.country + '</br>' +
                     'Zip ' + ipInfo.zip + '</br>' +
                     'Timezone ' + ipInfo.timezone + '</br>' +
                   '</div>' +
+                  generateRequestTable(ipInfo) +
                 '</div>' +
               '</div>' +
              '</div>';
@@ -65,7 +69,7 @@
           pin.marker = new google.maps.Marker({
             position: ipList[i].location,
             map,
-            title: ipList[i].titre
+            title: ipList[i].ip
           });
 
           pin.marker.addListener("click", () => {
@@ -136,6 +140,32 @@
 
     var getTitle = function (ipInfo) {
       return ipInfo.org == null || ipInfo.org === "" ? ipInfo.ip : ipInfo.org;
+    }
+
+    var analyseLogs = async function() {
+      var logs = document.getElementById("logs_text").value.split('\n');
+
+      var ipTextBox = document.getElementById("ip_addresses");
+
+      ipTextBox.value = "";
+
+      for (var i = 0; i < logs.length; i++) {
+        var ips = logs[i].match(" ([0-9]{1,3}\.){3}[0-9]{1,3} ");
+
+        if (ips != null && ips.length > 0) {
+          var ip = ips[0].trim();
+
+          if (ipTextBox.value.match(ip) == null) {
+            ipTextBox.value += ip + "\n";
+          }
+        }
+      }
+
+      await initMap();
+    }
+
+    var generateRequestTable = function (ipInfo) {
+      return "";
     }
   </script>
 
