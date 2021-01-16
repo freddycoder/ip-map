@@ -31,16 +31,16 @@
       return '<div id="content">' +
               '<div id="siteNotice">' +
                 '</div>' +
-                  '<h1 id="firstHeading" class="firstHeading">' + ipInfo.org + '</h1>' +
+                  '<h1 id="firstHeading" class="firstHeading">' + getTitle(ipInfo) + '</h1>' +
                   '<p><a href="' + ipInfo.lien + '">' + ipInfo.lien + '</a></p>' +
                   '<div id="bodyContent">' +
-                    '<p>Isp <b>' + ipInfo.isp + '</b></p>' +
-                    '<p>As <b>' + ipInfo.as + '</b></p>' +
-                    '<p>Country ' + ipInfo.country + '</p>' +
-                    '<p>Region ' + ipInfo.regionName + '</p>' +
-                    '<p>City ' + ipInfo.city + '</p>' +
-                    '<p>Zip ' + ipInfo.zip + '</p>' +
-                    '<p>Timezone ' + ipInfo.timezone + '</p>' +
+                    '<p>Isp <b>' + ipInfo.isp + '</b></br>' +
+                    'As <b>' + ipInfo.as + '</b></br>' +
+                    'Country ' + ipInfo.country + '</br>' +
+                    'Region ' + ipInfo.regionName + '</br>' +
+                    'City ' + ipInfo.city + '</br>' +
+                    'Zip ' + ipInfo.zip + '</br>' +
+                    'Timezone ' + ipInfo.timezone + '</br>' +
                   '</div>' +
                 '</div>' +
               '</div>' +
@@ -48,30 +48,32 @@
     }
 
     var initMap = async function () {
-      const events = await showIpsLocation();
+      const ipList = await showIpsLocation();
       const pins = [];
 
       const map = new google.maps.Map(document.getElementById("map"), {
-        zoom: 4,
-        center: events[0].location,
+        zoom: calculateZoom(ipList),
+        center: calculateCenter(ipList),
       });
 
-      for (var i = 0; i < events.length; i++) {
-        const pin = {};
+      for (var i = 0; i < ipList.length; i++) {
+        if (ipList[i].location.lat != undefined) {
+          const pin = {};
         
-        pin.infowindow = new google.maps.InfoWindow({ content: getHtmlCard(events[i]) });
-        
-        pin.marker = new google.maps.Marker({
-          position: events[i].location,
-          map,
-          title: events[i].titre
-        });
+          pin.infowindow = new google.maps.InfoWindow({ content: getHtmlCard(ipList[i]) });
+          
+          pin.marker = new google.maps.Marker({
+            position: ipList[i].location,
+            map,
+            title: ipList[i].titre
+          });
 
-        pin.marker.addListener("click", () => {
-          pin.infowindow.open(map, pin.marker);
-        });
+          pin.marker.addListener("click", () => {
+            pin.infowindow.open(map, pin.marker);
+          });
 
-        pins.push(pin);
+          pins.push(pin);
+        }
       }
 
       const pElem = document.getElementById("ip_found");
@@ -89,21 +91,22 @@
       const fetchs = [];
       for (var i = 0; i < lines.length; i++) {
         fetchs.push(fetch("http://ip-api.com/json/" + lines[i])
-          .then(data => data.json())
-          .then(j => tableauIps.push({
-            location: { lat: j.lat, lng: j.lon },
-            titre: j.query,
-            description: JSON.stringify(j, null,  ' '),
-            lien: "http://ip-api.com/json/" + j.query,
-            country: j.country,
-            city: j.city,
-            regionName: j.regionName,
-            zip: j.zip,
-            timezone: j.timezone,
-            isp: j.isp,
-            org: j.org,
-            as: j.as
-          })));
+                    .then(data => data.json())
+                    .then(j => tableauIps.push({
+                      ip: j.query,
+                      location: { lat: j.lat, lng: j.lon },
+                      description: JSON.stringify(j, null,  ' '),
+                      lien: "http://ip-api.com/json/" + j.query,
+                      country: j.country,
+                      city: j.city,
+                      regionName: j.regionName,
+                      zip: j.zip,
+                      timezone: j.timezone,
+                      isp: j.isp,
+                      org: j.org,
+                      as: j.as
+                    }))
+                    .catch(reason => console.log(reason)));
       }
 
       for (var i = 0; i < fetchs.length; i++) {
@@ -111,6 +114,28 @@
       }
 
       return tableauIps;
+    }
+
+    var calculateZoom = function (ipList) {
+      return Math.max(6 - ipList.length, 3);
+    }
+
+    var calculateCenter = function (ipList) {
+      var choice = ipList[0].location;
+
+      for (var i = 0; i < ipList.length - 1 && choice.lat == undefined; i++) {
+        choice = ipList[i + 1];
+      }
+
+      if (choice.lat == undefined) {
+        choice = { lat: 32.4362491, lng: 2.6318873 }
+      }
+
+      return choice;
+    }
+
+    var getTitle = function (ipInfo) {
+      return ipInfo.org == null || ipInfo.org === "" ? ipInfo.ip : ipInfo.org;
     }
   </script>
 
