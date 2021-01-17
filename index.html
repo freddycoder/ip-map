@@ -30,7 +30,7 @@
   <div id="map"></div>
 
   <script>
-    var getHtmlCard = function (ipInfo) {
+    var getHtmlCard = function (ipInfo, httpCalls = null) {
       return '<div id="content">' +
               '<div id="siteNotice">' +
                 '</div>' +
@@ -45,13 +45,13 @@
                     'Zip ' + ipInfo.zip + '</br>' +
                     'Timezone ' + ipInfo.timezone + '</br>' +
                   '</div>' +
-                  generateRequestTable(ipInfo) +
+                  '<p>' + generateRequestTable(ipInfo, httpCalls) + '</p>' +
                 '</div>' +
               '</div>' +
              '</div>';
     }
 
-    var initMap = async function () {
+    var initMap = async function (httpCalls = null) {
       const ipList = await showIpsLocation();
       const pins = [];
 
@@ -64,7 +64,7 @@
         if (ipList[i].location.lat != undefined) {
           const pin = {};
         
-          pin.infowindow = new google.maps.InfoWindow({ content: getHtmlCard(ipList[i]) });
+          pin.infowindow = new google.maps.InfoWindow({ content: getHtmlCard(ipList[i], httpCalls) });
           
           pin.marker = new google.maps.Marker({
             position: ipList[i].location,
@@ -90,11 +90,12 @@
       const lines = document.getElementById("ip_addresses").value.split('\n');
 
       const pElem = document.getElementById("ip_count");
-      pElem.innerText = lines.length + " adresse ip";
+      pElem.innerText = countIp(lines) + " adresse ip";
 
       const fetchs = [];
       for (var i = 0; i < lines.length; i++) {
-        fetchs.push(fetch("http://ip-api.com/json/" + lines[i])
+        if (lines.length == 1 || lines[i] != "") {
+          fetchs.push(fetch("http://ip-api.com/json/" + lines[i])
                     .then(data => data.json())
                     .then(j => tableauIps.push({
                       ip: j.query,
@@ -111,6 +112,7 @@
                       as: j.as
                     }))
                     .catch(reason => console.log(reason)));
+        }
       }
 
       for (var i = 0; i < fetchs.length; i++) {
@@ -143,6 +145,8 @@
     }
 
     var analyseLogs = async function() {
+      const httpCalls = {};
+
       var logs = document.getElementById("logs_text").value.split('\n');
 
       var ipTextBox = document.getElementById("ip_addresses");
@@ -155,17 +159,50 @@
         if (ips != null && ips.length > 0) {
           var ip = ips[0].trim();
 
-          if (ipTextBox.value.match(ip) == null) {
+          if (ipTextBox.value.indexOf(ip) == -1) {
             ipTextBox.value += ip + "\n";
+
+            httpCalls[ip] = {};
+            
+            httpCalls[ip].lines = [];
+          }
+
+          if (httpCalls[ip] != null) {
+            httpCalls[ip].lines.push(logs[i]);
           }
         }
       }
 
-      await initMap();
+      await initMap(httpCalls);
     }
 
-    var generateRequestTable = function (ipInfo) {
+    var generateRequestTable = function (ipInfo, httpCalls) {
+      if (httpCalls != null) {
+        var calls = httpCalls[ipInfo.ip];
+
+        if (calls != null) {
+          return calls.lines.toString();
+        }
+      }
+      
       return "";
+    }
+
+    var countIp = function(lines) {
+      if (lines.length == 1) {
+        return 1;
+      }
+      else {
+        var count = 0;
+
+        for (var i = 0; i < lines.length; i++) {
+          if (lines[i] != "") {
+            count++;
+          }
+        }
+
+        return count;
+      }
     }
   </script>
 
