@@ -22,8 +22,9 @@
     <hr />
 
     <h3>Analyser des logs</h3>
-    <textarea id="logs_text"></textarea>
+    <textarea id="logs_text" onchange="countLogLine()"></textarea>
     <button onclick="analyseLogs()">Analyse logs</button>
+    <p id="logs_line_count">0 lignes</p>
 
   </div>
 
@@ -149,6 +150,8 @@
 
       var logs = document.getElementById("logs_text").value.split('\n');
 
+      countLogLine();
+
       var ipTextBox = document.getElementById("ip_addresses");
 
       ipTextBox.value = "";
@@ -204,6 +207,30 @@
         return count;
       }
     }
+
+    var countLogLine = function(text = null) {
+      if (text == null) {
+        text = document.getElementById("logs_text").value;
+
+        if (text == null) return 0;
+      }
+
+      var count = 0;
+
+      for (var i = 0; i < text.length; i++) {
+        if (text[i] == "\n") {
+          count++;
+        }
+      }
+
+      var logLigneText = count + " lignes";
+      var lineCountElem = document.getElementById("logs_line_count");
+      lineCountElem.innerText = logLigneText;
+
+      return count;
+    }
+
+    countLogLine();
   </script>
 
 </body>
