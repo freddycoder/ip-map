@@ -22,9 +22,10 @@
     <hr />
 
     <h3>Analyser des logs</h3>
-    <textarea id="logs_text" onchange="countLogLine()"></textarea>
+    <textarea id="logs_text" onchange="onChangeLogsText()"></textarea>
     <button onclick="analyseLogs()">Analyse logs</button>
     <p id="logs_line_count">0 lignes</p>
+    <p id="pre_ip_count">0 adresse ip</p>
 
   </div>
 
@@ -70,7 +71,8 @@
           pin.marker = new google.maps.Marker({
             position: ipList[i].location,
             map,
-            title: ipList[i].ip
+            title: ipList[i].ip,
+			      label: ipList[i].lines != null ? ipList[i].lines.length : null
           });
 
           pin.marker.addListener("click", () => {
@@ -93,31 +95,49 @@
       const pElem = document.getElementById("ip_count");
       pElem.innerText = countIp(lines) + " adresse ip";
 
-      const fetchs = [];
+      const rateLimit = 45;
+      const startTime = Date.now() / 1000;
+      var nbRequest = 0;
+
       for (var i = 0; i < lines.length; i++) {
         if (lines.length == 1 || lines[i] != "") {
-          fetchs.push(fetch("http://ip-api.com/json/" + lines[i])
-                    .then(data => data.json())
-                    .then(j => tableauIps.push({
-                      ip: j.query,
-                      location: { lat: j.lat, lng: j.lon },
-                      description: JSON.stringify(j, null,  ' '),
-                      lien: "http://ip-api.com/json/" + j.query,
-                      country: j.country,
-                      city: j.city,
-                      regionName: j.regionName,
-                      zip: j.zip,
-                      timezone: j.timezone,
-                      isp: j.isp,
-                      org: j.org,
-                      as: j.as
-                    }))
-                    .catch(reason => console.log(reason)));
-        }
-      }
+          await fetch("http://ip-api.com/json/" + lines[i])
+                .then(function(data) {
+                  console.log(data.headers);
+                  console.log(data.headers.get("X-Rl"));
+                  console.log(data.headers.get("X-Ttl"));
 
-      for (var i = 0; i < fetchs.length; i++) {
-        await fetchs[i];
+                  return data.json();
+                })
+                .then(j => tableauIps.push({
+                  ip: j.query,
+                  location: { lat: j.lat, lng: j.lon },
+                  description: JSON.stringify(j, null,  ' '),
+                  lien: "http://ip-api.com/json/" + j.query,
+                  country: j.country,
+                  city: j.city,
+                  regionName: j.regionName,
+                  zip: j.zip,
+                  timezone: j.timezone,
+                  isp: j.isp,
+                  org: j.org,
+                  as: j.as
+                }))
+                .catch(reason => console.log(reason));
+          
+          nbRequest++;
+
+          if (nbRequest > 1) {
+            var delta = (Date.now() / 1000 - startTime) + 0.00000001;
+            var rate = nbRequest / delta;
+
+            console.log("Rate : " + rate);
+            
+            if (rate > rateLimit) {
+              await sleep(rateLimit);
+            }
+          }
+        }
       }
 
       return tableauIps;
@@ -171,7 +191,7 @@
           }
 
           if (httpCalls[ip] != null) {
-            httpCalls[ip].lines.push(logs[i]);
+            httpCalls[ip].lines.push('<span class="log_line">' + logs[i] + "</span>");
           }
         }
       }
@@ -184,7 +204,13 @@
         var calls = httpCalls[ipInfo.ip];
 
         if (calls != null) {
-          return calls.lines.toString();
+          var sb = "";
+
+          for (var i = 0; i < calls.lines.length; i++) {
+            sb += calls.lines[i] + "\n";
+          }
+
+          return sb;
         }
       }
       
@@ -226,11 +252,48 @@
       var logLigneText = count + " lignes";
       var lineCountElem = document.getElementById("logs_line_count");
       lineCountElem.innerText = logLigneText;
-
-      return count;
     }
 
-    countLogLine();
+    var countPreIp = function() {
+      logs = document.getElementById("logs_text").value.split("\n");
+
+      var ipSet = [];
+
+      console.log("pre ip count start...");
+      for (var i = 0; i < logs.length; i++) {
+        var matchs = logs[i].match("(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]\\d|\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]\\d|\\d)){3}");
+
+        if (matchs != null) {
+          console.log("match length " + matchs.length);
+          
+          for (var j = 0; j < matchs.length; j++) {
+            if (ipSet.indexOf(matchs[j]) == -1){
+              ipSet.push(matchs[j]);
+              console.log("ip " + matchs[j]);
+            }
+            else {
+              console.log("ip already in set " + matchs[j])
+            }
+          }
+        }
+      }
+
+      var preIpLigneTexte = ipSet.length + " ip trouvés";
+      var preIpCountElem = document.getElementById("pre_ip_count");
+      preIpCountElem.innerText = preIpLigneTexte;
+      
+    }
+
+    var onChangeLogsText = function() {
+      countLogLine();
+      countPreIp();
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    onChangeLogsText();
   </script>
 
 </body>
